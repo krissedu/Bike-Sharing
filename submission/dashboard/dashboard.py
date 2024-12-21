@@ -7,33 +7,33 @@ from babel.numbers import format_currency
 sns.set(style='dark')
 
 def create_monthly_data(df):
-    monthly_data = df.groupby('mnth').agg(
-        total_rentals=('cnt', 'sum'),
+    monthly_data = df.groupby('month').agg(
+        total_rentals=('count', 'sum'),
         casual_rentals=('casual', 'sum'),
         registered_rentals=('registered', 'sum')
     ).reset_index()
     return monthly_data
 
-def create_weather_rentals_scatter(df):
-    df_last_year = df[df['yr'] == 1]
-    return df_last_year
+def create_weather_rentals_scatter(df, start_date, end_date):
+    df_filtered = df[(df['date'] >= start_date) & (df['date'] <= end_date)]
+    return df_filtered
 
-def create_weather_rentals_bar(df):
-    df_last_year = df[df['yr'] == 1]
-    return df_last_year
+def create_weather_rentals_bar(df, start_date, end_date):
+    df_filtered = df[(df['date'] >= start_date) & (df['date'] <= end_date)]
+    return df_filtered
 
 def create_error_by_day(df):
-    data_mismatch = df[df['selisih_match'] == False].copy()
-    data_mismatch['weekday'] = pd.to_datetime(data_mismatch['dteday']).dt.weekday + 1 
+    data_mismatch = df[df['selisih_check'] == False].copy()
+    data_mismatch['weekday'] = pd.to_datetime(data_mismatch['date']).dt.weekday + 1 
     error_by_day = data_mismatch['weekday'].value_counts().sort_index()
     return error_by_day
 
 all_df = pd.read_csv("./all_data.csv")
 
-all_df['dteday'] = pd.to_datetime(all_df['dteday'])
+all_df['date'] = pd.to_datetime(all_df['date'])
 
-min_date = all_df['dteday'].min()
-max_date = all_df['dteday'].max()
+min_date = all_df['date'].min()
+max_date = all_df['date'].max()
  
 with st.sidebar:
 
@@ -49,12 +49,12 @@ start_date = pd.to_datetime(start_date)
 end_date = pd.to_datetime(end_date)
 
 def filter_data(start_date, end_date):
-    return all_df[(all_df['dteday'] >= start_date) & (all_df['dteday'] <= end_date)]
+    return all_df[(all_df['date'] >= start_date) & (all_df['date'] <= end_date)]
 
 main_df = filter_data(start_date, end_date)
 
 monthly_data = create_monthly_data(main_df)
-df_last_year = create_weather_rentals_scatter(main_df)
+df_filtered = create_weather_rentals_scatter(main_df,start_date, end_date)
 error_by_day = create_error_by_day(main_df)
 
 st.header('Bike Sharing Dashboard')
@@ -77,9 +77,9 @@ with col3:
 st.subheader('Performa perentalan sepeda setahun terakhir')
 
 plt.figure(figsize=(12, 6))
-plt.plot(monthly_data['mnth'], monthly_data['total_rentals'], label='Total Rental', marker='o')
-plt.plot(monthly_data['mnth'], monthly_data['casual_rentals'], label='Casual Rental', marker='o')
-plt.plot(monthly_data['mnth'], monthly_data['registered_rentals'], label='Registered Rental', marker='o')
+plt.plot(monthly_data['month'], monthly_data['total_rentals'], label='Total Rental', marker='o')
+plt.plot(monthly_data['month'], monthly_data['casual_rentals'], label='Casual Rental', marker='o')
+plt.plot(monthly_data['month'], monthly_data['registered_rentals'], label='Registered Rental', marker='o')
 plt.xticks(range(1, 13))
 plt.xlabel('Bulan')
 plt.ylabel('Jumlah Rental')
@@ -87,37 +87,43 @@ plt.legend()
 plt.grid()
 st.pyplot(plt)
 
-st.subheader('Temperatur vs Total Rental')
+col1, col2, col3 = st.columns(3)
 
-plt.figure(figsize=(10, 5))
-sns.scatterplot(x='temp', y='cnt', data=df_last_year, alpha=0.6)
-plt.xlabel('Temperatur')
-plt.ylabel('Total Rental')
-plt.tight_layout()
-st.pyplot(plt)
+with col1:
+    st.subheader('Temperatur vs Total Rental')
 
-st.subheader('Windspeed vs Total Rentals')
+    plt.figure(figsize=(10, 5))
+    sns.scatterplot(x='temp', y='count', data=df_filtered, alpha=0.6)
+    plt.xlabel('Temperatur')
+    plt.ylabel('Total Rental')
+    plt.tight_layout()
+    st.pyplot(plt)
 
-plt.figure(figsize=(10, 5))
-sns.scatterplot(x='windspeed', y='cnt', data=df_last_year, alpha=0.6)
-plt.xlabel('Wind Speed')
-plt.ylabel('Total Rental')
-plt.tight_layout()
-st.pyplot(plt)
+with col2:
+    st.subheader('Windspeed vs Total Rentals')
 
-st.subheader('Kelembapan vs Total Rentals')
+    plt.figure(figsize=(10, 5))
+    sns.scatterplot(x='windspeed', y='count', data=df_filtered, alpha=0.6)
+    plt.xlabel('Wind Speed')
+    plt.ylabel('Total Rental')
+    plt.tight_layout()
+    st.pyplot(plt)
 
-plt.figure(figsize=(10, 5))
-sns.scatterplot(x='hum', y='cnt', data=df_last_year, alpha=0.6)
-plt.xlabel('Kelembapan')
-plt.ylabel('Total Rental')
-plt.tight_layout()
-st.pyplot(plt)
+with col3:
+    st.subheader('Kelembapan vs Total Rentals')
+
+    plt.figure(figsize=(10, 5))
+    sns.scatterplot(x='humidity', y='count', data=df_filtered, alpha=0.6)
+    plt.xlabel('Kelembapan')
+    plt.ylabel('Total Rental')
+    plt.tight_layout()
+    st.pyplot(plt)
+
 
 st.subheader('Rata-rata Total Rental vs Cuaca')
 
 plt.figure(figsize=(10, 5))
-sns.barplot(x='weathersit', y='cnt', data=df_last_year, errorbar=None, hue='weathersit', legend=False, palette='coolwarm')
+sns.barplot(x='weather', y='count', data=df_filtered, errorbar=None, hue='weather', legend=False, palette='coolwarm')
 plt.xlabel('Cuaca')
 plt.ylabel('Rata-rata Total Rental')
 plt.xticks(ticks=[0, 1, 2, 3], labels=[
@@ -129,9 +135,29 @@ plt.xticks(ticks=[0, 1, 2, 3], labels=[
 plt.tight_layout()
 st.pyplot(plt)
 
+st.subheader('Perentalan Workday vs Holiday')
+st.markdown("""
+Pie chart yang membandingkan persentase perentalan pada hari libur dan hari kerja 
+""")
+# Group by workingday and sum the counts
+workday_counts = df_filtered.groupby('workingday')['count'].sum()
+
+# Ensure the order and length of labels match the data
+labels = ['Holiday', 'Workday']
+
+# Define colors for the pie chart
+colors = ['#ff9999', '#66b3ff']  # Red for holidays, blue for workdays
+
+# Reindex to ensure exactly two categories and fill missing values with 0
+workday_counts = workday_counts.reindex([0, 1], fill_value=0).fillna(0)
+
+plt.figure(figsize=(8, 6))
+plt.pie(workday_counts, labels=labels, autopct='%1.1f%%', startangle=140, colors=colors)
+st.pyplot(plt)
+
 st.subheader('Hari dan Jumlah Kesalaahan')
 st.markdown("""
-Kesalahan yang dimaksud adalah perbedaan antara jumlah rental pada day_df dan jumlah rental pada hour_df.  
+Kesalahan yang dimaksud adalah perbedaan antara jumlah rental pada day_df dan jumlah rental pada hour_df, hal ini kemungkinan besar terjadi karena kelalaian penginput data.  
 """)
 plt.figure(figsize=(10, 6))
 plt.plot(error_by_day.index, error_by_day.values, marker='o', linestyle='-', color='crimson')
